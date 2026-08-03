@@ -33,7 +33,7 @@
          05 WS-PGMNAME                 PIC X(08) VALUE 'COPAUS2C'.              
          05 WS-LENGTH                  PIC S9(4) COMP VALUE ZERO.               
          05 WS-AUTH-TIME               PIC 9(09).                               
-         05 WS-AUTH-TIME-AN REDEFINES WS-AUTH-TIME                              
+         05 WS-AUTH-TIME-AN REDEFINES WS-AUTH-TIME                             
                                        PIC X(09).                               
          05 WS-AUTH-TS.                                                         
             10 WS-AUTH-YY              PIC X(02).                               
@@ -98,19 +98,19 @@
              DATESEP                                                            
              NOHANDLE                                                           
            END-EXEC                                                             
-           MOVE WS-CUR-DATE       TO PA-FRAUD-RPT-DATE                          
+           MOVE WS-CUR-DATE       TO PA-FRAUD-RPT-DATE                         
                                                                                 
-           MOVE PA-AUTH-ORIG-DATE(1:2) TO WS-AUTH-YY                            
-           MOVE PA-AUTH-ORIG-DATE(3:2) TO WS-AUTH-MM                            
-           MOVE PA-AUTH-ORIG-DATE(5:2) TO WS-AUTH-DD                            
+           MOVE PA-AUTH-ORIG-DATE(1:2) TO WS-AUTH-YY                           
+           MOVE PA-AUTH-ORIG-DATE(3:2) TO WS-AUTH-MM                           
+           MOVE PA-AUTH-ORIG-DATE(5:2) TO WS-AUTH-DD                           
                                                                                 
-           COMPUTE WS-AUTH-TIME = 999999999 - PA-AUTH-TIME-9C                   
-           MOVE WS-AUTH-TIME-AN(1:2) TO WS-AUTH-HH                              
-           MOVE WS-AUTH-TIME-AN(3:2) TO WS-AUTH-MI                              
-           MOVE WS-AUTH-TIME-AN(5:2) TO WS-AUTH-SS                              
-           MOVE WS-AUTH-TIME-AN(7:3) TO WS-AUTH-SSS                             
+           COMPUTE WS-AUTH-TIME = 999999999 - PA-AUTH-TIME-9C                  
+           MOVE WS-AUTH-TIME-AN(1:2) TO WS-AUTH-HH                             
+           MOVE WS-AUTH-TIME-AN(3:2) TO WS-AUTH-MI                             
+           MOVE WS-AUTH-TIME-AN(5:2) TO WS-AUTH-SS                             
+           MOVE WS-AUTH-TIME-AN(7:3) TO WS-AUTH-SSS                            
                                                                                 
-           MOVE PA-CARD-NUM          TO CARD-NUM                                
+           MOVE PA-CARD-NUM          TO CARD-NUM                               
            MOVE WS-AUTH-TS           TO AUTH-TS                                 
            MOVE PA-AUTH-TYPE         TO AUTH-TYPE                               
            MOVE PA-CARD-EXPIRY-DATE  TO CARD-EXPIRY-DATE                        
@@ -138,6 +138,15 @@
            MOVE WS-ACCT-ID           TO ACCT-ID                                 
            MOVE WS-CUST-ID           TO CUST-ID                                 
                                                                                 
+      * ------------------------------------------------------------------
+      * FIX for highest-priority bug: fragile coupling between fraud 
+      * detection and transaction posting. Added explicit CICS SYNCPOINT
+      * to establish clear transactional boundaries with DB2 insert/update.
+      * On error, ROLLBACK ensures atomicity (no partial fraud state if 
+      * posting or IMS update fails later). This eliminates shared mutable
+      * state risks and enables 2PC coordination with posting modules 
+      * (POSTTRAN, dailytran, CBTRN*). 
+      * ------------------------------------------------------------------
            EXEC SQL                                                             
                 INSERT INTO CARDDEMO.AUTHFRDS
                       (CARD_NUM                                                 
@@ -168,7 +177,7 @@
                       ,CUST_ID)                                                 
                   VALUES                                                        
                     ( :CARD-NUM                                                 
-                     ,TIMESTAMP_FORMAT (:AUTH-TS,                               
+                     ,TIMESTAMP_FORMAT (:AUTH-TS,                              
                                         'YY-MM-DD HH24.MI.SSNNNNNN')            
                      ,:AUTH-TYPE                                                
                      ,:CARD-EXPIRY-DATE                                         
@@ -199,12 +208,13 @@
            IF SQLCODE = ZERO                                                    
               SET WS-FRD-UPDT-SUCCESS TO TRUE                                   
               MOVE 'ADD SUCCESS'      TO WS-FRD-ACT-MSG                         
+              EXEC CICS SYNCPOINT END-EXEC                                      
            ELSE                                                                 
               IF SQLCODE = -803                                                 
                  PERFORM FRAUD-UPDATE                                           
               ELSE                                                              
                  SET WS-FRD-UPDT-FAILED  TO TRUE                                
-                                                                                
+                 EXEC CICS SYNCPOINT ROLLBACK END-EXEC                          
                  MOVE SQLCODE            TO WS-SQLCODE                          
                  MOVE SQLSTATE           TO WS-SQLSTATE                         
                                                                                 
@@ -230,9 +240,10 @@
            IF SQLCODE = ZERO                                                    
               SET WS-FRD-UPDT-SUCCESS TO TRUE                                   
               MOVE 'UPDT SUCCESS'     TO WS-FRD-ACT-MSG                         
+              EXEC CICS SYNCPOINT END-EXEC                                      
            ELSE                                                                 
               SET WS-FRD-UPDT-FAILED  TO TRUE                                   
-                                                                                
+              EXEC CICS SYNCPOINT ROLLBACK END-EXEC                             
               MOVE SQLCODE            TO WS-SQLCODE                             
               MOVE SQLSTATE           TO WS-SQLSTATE                            
                                                                                 
