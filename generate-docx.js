@@ -18,7 +18,7 @@ const doc = new Document({
                 alignment: AlignmentType.CENTER,
             }),
             new Paragraph({
-                text: `Generated: ${new Date().toISOString().split('T')[0]} | Source: https://github.com/vinay-20-40/AWS/tree/main`,
+                text: `Generated: 2026-08-03 (post-coupling-fix) | Source: https://github.com/vinay-20-40/AWS/tree/main`,
                 alignment: AlignmentType.CENTER,
             }),
             new Paragraph({ text: "" }),
