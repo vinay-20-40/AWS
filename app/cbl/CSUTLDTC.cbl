@@ -1,5 +1,5 @@
-      ******************************************************************        
-      *****       CALL TO CEEDAYS                                *******        
+      ******************************************************************
+      *****       CALL TO CEEDAYS                                *******
       ******************************************************************
       * Copyright Amazon.com, Inc. or its affiliates.                   
       * All Rights Reserved.                                            
@@ -56,18 +56,19 @@
               02 FILLER       PIC X(01) VALUE SPACE.                            
               02 FILLER       PIC X(03) VALUE SPACES.                           
                                                                                 
-      * CEEDAYS API FEEDBACK CODE                                               
+      * CEEDAYS API FEEDBACK CODE                                                
           01 FEEDBACK-CODE.                                                     
-           02  FEEDBACK-TOKEN-VALUE. 
-             88  FC-INVALID-DATE       VALUE X'0000000000000000'.
-             88  FC-INSUFFICIENT-DATA  VALUE X'000309CB59C3C5C5'.
-             88  FC-BAD-DATE-VALUE     VALUE X'000309CC59C3C5C5'.
-             88  FC-INVALID-ERA        VALUE X'000309CD59C3C5C5'.
-             88  FC-UNSUPP-RANGE       VALUE X'000309D159C3C5C5'.
-             88  FC-INVALID-MONTH      VALUE X'000309D559C3C5C5'.
-             88  FC-BAD-PIC-STRING     VALUE X'000309D659C3C5C5'.
-             88  FC-NON-NUMERIC-DATA   VALUE X'000309D859C3C5C5'.
-             88  FC-YEAR-IN-ERA-ZERO   VALUE X'000309D959C3C5C5'.
+           02  FEEDBACK-TOKEN-VALUE.                                            
+             88  FC-SUCCESS               VALUE X'0000000000000000'.            
+             88  FC-INVALID-DATE          VALUE X'000309CB59C3C5C5'.            
+             88  FC-INSUFFICIENT-DATA     VALUE X'000309CC59C3C5C5'.            
+             88  FC-BAD-DATE-VALUE        VALUE X'000309CD59C3C5C5'.            
+             88  FC-INVALID-ERA           VALUE X'000309D159C3C5C5'.            
+             88  FC-UNSUPP-RANGE          VALUE X'000309D559C3C5C5'.            
+             88  FC-INVALID-MONTH         VALUE X'000309D659C3C5C5'.            
+             88  FC-BAD-PIC-STRING        VALUE X'000309D859C3C5C5'.            
+             88  FC-NON-NUMERIC-DATA      VALUE X'000309D959C3C5C5'.            
+             88  FC-YEAR-IN-ERA-ZERO      VALUE X'000309DA59C3C5C5'.            
                03  CASE-1-CONDITION-ID.                                         
                    04  SEVERITY        PIC S9(4) BINARY.                        
                    04  MSG-NO          PIC S9(4) BINARY.                        
@@ -76,82 +77,72 @@
                    04  CLASS-CODE      PIC S9(4) BINARY.                        
                    04  CAUSE-CODE      PIC S9(4) BINARY.                        
                03  CASE-SEV-CTL    PIC X.                                       
-               03  FACILITY-ID     PIC XXX.                                     
+               03  FACILITY-ID     PIC X(3).                                    
            02  I-S-INFO        PIC S9(9) BINARY.                                
-                                                                                
                                                                                 
        LINKAGE SECTION.                                                         
           01 LS-DATE         PIC X(10).                                         
           01 LS-DATE-FORMAT  PIC X(10).                                         
           01 LS-RESULT       PIC X(80).                                         
                                                                                 
-       PROCEDURE DIVISION USING LS-DATE, LS-DATE-FORMAT, LS-RESULT.             
-           
-           INITIALIZE WS-MESSAGE
-           MOVE SPACES TO WS-DATE
-                                                                        
+       PROCEDURE DIVISION USING LS-DATE, LS-DATE-FORMAT, LS-RESULT.            
+           INITIALIZE WS-MESSAGE                                                
+           MOVE SPACES TO WS-DATE                                              
+           MOVE LS-DATE TO WS-DATE                                              
+           MOVE LS-DATE-FORMAT TO WS-DATE-FMT                                  
+                                                                                
            PERFORM A000-MAIN                                                    
               THRU A000-MAIN-EXIT                                               
-
-      *    DISPLAY WS-MESSAGE                                                   
-           MOVE WS-MESSAGE                 TO LS-RESULT 
-           MOVE WS-SEVERITY-N              TO RETURN-CODE          
                                                                                 
-           EXIT PROGRAM                                                         
-      *    GOBACK                                                               
-           .                                                                    
+           MOVE WS-MESSAGE TO LS-RESULT                                         
+           MOVE WS-SEVERITY-N TO RETURN-CODE                                   
+           GOBACK.                                                              
+                                                                                
        A000-MAIN.                                                               
-                                                                                
            MOVE LENGTH OF LS-DATE                                               
-                        TO VSTRING-LENGTH  OF WS-DATE-TO-TEST                   
-           MOVE LS-DATE TO VSTRING-TEXT    OF WS-DATE-TO-TEST
-                           WS-DATE                  
+                        TO VSTRING-LENGTH OF WS-DATE-TO-TEST                   
+           MOVE LS-DATE TO VSTRING-TEXT OF WS-DATE-TO-TEST                     
            MOVE LENGTH OF LS-DATE-FORMAT                                        
-                         TO VSTRING-LENGTH OF WS-DATE-FORMAT                    
-           MOVE LS-DATE-FORMAT                                                  
-                         TO VSTRING-TEXT   OF WS-DATE-FORMAT   
-                            WS-DATE-FMT  
-           MOVE 0        TO OUTPUT-LILLIAN                              
-                                                                        
+                         TO VSTRING-LENGTH OF WS-DATE-FORMAT                   
+           MOVE LS-DATE-FORMAT TO VSTRING-TEXT OF WS-DATE-FORMAT               
+           MOVE 0 TO OUTPUT-LILLIAN                                             
+                                                                                
            CALL "CEEDAYS" USING                                                 
                   WS-DATE-TO-TEST,                                              
                   WS-DATE-FORMAT,                                               
                   OUTPUT-LILLIAN,                                               
                   FEEDBACK-CODE                                                 
                                                                                 
-           MOVE WS-DATE-TO-TEST            TO WS-DATE                           
-           MOVE SEVERITY OF FEEDBACK-CODE  TO WS-SEVERITY-N                     
-           MOVE MSG-NO OF FEEDBACK-CODE    TO WS-MSG-NO-N                       
-                                                                 
-      *    WS-RESULT IS 15 CHARACTERS                                           
-      *                123456789012345'                                         
-           EVALUATE TRUE                                                        
-              WHEN FC-INVALID-DATE                                   
-                 MOVE 'Date is valid'      TO WS-RESULT              
-              WHEN FC-INSUFFICIENT-DATA                              
-                 MOVE 'Insufficient'       TO WS-RESULT              
-              WHEN FC-BAD-DATE-VALUE                                 
-                 MOVE 'Datevalue error'    TO WS-RESULT              
-              WHEN FC-INVALID-ERA                                    
-                 MOVE 'Invalid Era    '    TO WS-RESULT              
-              WHEN FC-UNSUPP-RANGE                                   
-                 MOVE 'Unsupp. Range  '    TO WS-RESULT              
-              WHEN FC-INVALID-MONTH                                  
-                 MOVE 'Invalid month  '    TO WS-RESULT              
-              WHEN FC-BAD-PIC-STRING                                 
-                 MOVE 'Bad Pic String '    TO WS-RESULT              
-              WHEN FC-NON-NUMERIC-DATA                               
-                 MOVE 'Nonnumeric data'    TO WS-RESULT              
-              WHEN FC-YEAR-IN-ERA-ZERO                               
-                 MOVE 'YearInEra is 0 '    TO WS-RESULT              
-              WHEN OTHER                                             
-                 MOVE 'Date is invalid'    TO WS-RESULT 
-           END-EVALUATE                                                         
+           MOVE SEVERITY OF FEEDBACK-CODE TO WS-SEVERITY-N                     
+           MOVE MSG-NO OF FEEDBACK-CODE TO WS-MSG-NO-N                         
                                                                                 
-           .                                                                    
-       A000-MAIN-EXIT.                                                          
-           EXIT                                                                 
-           .                                                                    
-      *
-      * Ver: CardDemo_v1.0-15-g27d6c6f-68 Date: 2022-07-19 23:12:35 CDT
-      *
+           EVALUATE TRUE                                                        
+              WHEN FC-SUCCESS                                                   
+                 MOVE 'Date is valid  ' TO WS-RESULT                            
+              WHEN FC-INVALID-DATE                                              
+                 MOVE 'Invalid date   ' TO WS-RESULT                            
+              WHEN FC-INSUFFICIENT-DATA                                         
+                 MOVE 'Insufficient   ' TO WS-RESULT                            
+              WHEN FC-BAD-DATE-VALUE                                            
+                 MOVE 'Bad date value ' TO WS-RESULT                            
+              WHEN FC-INVALID-ERA                                               
+                 MOVE 'Invalid era    ' TO WS-RESULT                            
+              WHEN FC-UNSUPP-RANGE                                              
+                 MOVE 'Unsupp range   ' TO WS-RESULT                            
+              WHEN FC-INVALID-MONTH                                             
+                 MOVE 'Invalid month  ' TO WS-RESULT                            
+              WHEN FC-BAD-PIC-STRING                                            
+                 MOVE 'Bad pic string ' TO WS-RESULT                            
+              WHEN FC-NON-NUMERIC-DATA                                          
+                 MOVE 'Non-numeric    ' TO WS-RESULT                            
+              WHEN FC-YEAR-IN-ERA-ZERO                                          
+                 MOVE 'Year zero      ' TO WS-RESULT                            
+              WHEN OTHER                                                        
+                 MOVE 'Unknown error  ' TO WS-RESULT                            
+           END-EVALUATE                                                         
+           .                                                                   
+       A000-MAIN-EXIT.                                                         
+           EXIT.                                                                
+      *                                                                        
+      * Ver: CardDemo_v1.0-2026-08-02                                           
+      *                                                                        
